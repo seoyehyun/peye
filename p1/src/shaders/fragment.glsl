@@ -111,6 +111,7 @@ void main() {
   }
 
   if (materialMode == 3) {
+    bool isFrontFace = gl_FrontFacing;
     float facing = clamp(dot(n, viewDir), 0.0, 1.0);
     float rim = pow(1.0 - facing, 2.0);
     float innerGlow = pow(facing, 1.2);
@@ -148,7 +149,11 @@ void main() {
     jelly += vec3(0.12, 0.4, 0.18) * thickness * 0.28;
     jelly += vec3(0.28, 0.95, 0.34) * (0.82 + 0.18 * sin(time * 1.8)) * innerGlow * 0.16;
 
-    float alpha = mix(0.2, 0.9, pow(facing, 3.0));
+    float alpha = mix(0.3, 0.95, pow(facing, 1.7));
+    if (!isFrontFace) {
+      jelly *= vec3(0.34, 0.5, 0.38);
+      alpha *= 0.22;
+    }
     gl_FragColor = vec4(clamp(jelly, 0.0, 1.0), alpha);
     return;
   }
