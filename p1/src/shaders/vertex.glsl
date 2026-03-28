@@ -29,6 +29,16 @@ float spiralHeight(vec3 dir) {
   return wave * radialMask;
 }
 
+vec3 squashStretch(vec3 dir, float amount, float phase) {
+  float stretch = 1.0 + amount * (0.55 + 0.45 * sin(phase));
+  float squash = 1.0 - amount * (0.28 + 0.18 * cos(phase * 0.8));
+
+  vec3 scaled = dir;
+  scaled.xz *= squash;
+  scaled.y *= stretch;
+  return normalize(scaled);
+}
+
 void main() {
   vUv = uv;
   vSphereDir = normalize(position);
@@ -37,7 +47,12 @@ void main() {
   float height = spiralHeight(vSphereDir) * intensity;
   vHeight = height;
 
-  vec3 displaced = position + vSphereDir * (height * DISPLACEMENT_SCALE);
+  float wobbleAmount = intensity * 0.16;
+  float wobblePhase = time * 2.4 + vSphereDir.y * 2.0;
+  vec3 squishyDir = squashStretch(vSphereDir, wobbleAmount, wobblePhase);
+  float globalPulse = 1.0 + intensity * 0.08 * sin(time * 2.1);
+  vec3 squishyBase = squishyDir * length(position) * globalPulse;
+  vec3 displaced = squishyBase + squishyDir * (height * DISPLACEMENT_SCALE);
 
   vPosition = vec3(modelMatrix * vec4(displaced, 1.0));
   vNormal = normalize(normalMatrix * normal);

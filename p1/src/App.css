@@ -5,7 +5,7 @@
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #000;
+  background: transparent;
 }
 
 .app-container canvas {
@@ -42,6 +42,11 @@
   margin-bottom: 0;
 }
 
+.control-group-stack {
+  display: block;
+  margin-bottom: 10px;
+}
+
 .control-group span {
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -59,7 +64,12 @@
   accent-color: #9ed0ff;
 }
 
-.control-group select {
+.custom-select {
+  grid-column: 1 / -1;
+  position: relative;
+}
+
+.custom-select-trigger {
   grid-column: 1 / -1;
   width: 100%;
   padding: 10px 12px;
@@ -68,6 +78,75 @@
   background: rgba(255, 255, 255, 0.06);
   color: #f5f9ff;
   font: inherit;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.custom-select-caret {
+  color: #a9bbd6;
+  font-size: 30px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.custom-select-caret.is-open {
+  transform: rotate(180deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid rgba(158, 208, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.custom-select-option {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #f5f9ff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-select-upload {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(158, 208, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f9ff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-select-option:hover,
+.custom-select-option.is-selected,
+.custom-select-upload:hover {
+  background: rgba(158, 208, 255, 0.16);
+}
+
+.sound-upload-input {
+  display: none;
 }
 
 .control-group input[type="color"] {

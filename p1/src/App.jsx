@@ -17,13 +17,18 @@ const soundOptions = Object.entries(soundModules)
   .sort((a, b) => a.label.localeCompare(b.label));
 
 export default function App() {
-  const [stripeSpacing, setStripeSpacing] = useState(0.5);
+  const [stripeSpacing, setStripeSpacing] = useState(0.2);
   const [volume, setVolume] = useState(0.5);
   const [intensity, setIntensity] = useState(0.7);
   const [materialMode, setMaterialMode] = useState(0);
+  const [backgroundMode, setBackgroundMode] = useState(0);
+  const [uploadedSounds, setUploadedSounds] = useState([]);
   const [selectedSound, setSelectedSound] = useState(soundOptions[0]?.src ?? "");
+  const [isSoundMenuOpen, setIsSoundMenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef(null);
+  const soundMenuRef = useRef(null);
+  const soundUploadInputRef = useRef(null);
   const rendererRef = useRef(null);
   const startTimeRef = useRef(Date.now());
   const sphereRef = useRef(null);
@@ -37,14 +42,47 @@ export default function App() {
   const audioTargetRef = useRef(0);
   const mediaSourceRef = useRef(null);
   const stripeSpacingRef = useRef(0.5);
-  const volumeRef = useRef(0.25);
-  const intensityRef = useRef(1);
+  const volumeRef = useRef(0.5);
+  const intensityRef = useRef(0.7);
+  const materialModeRef = useRef(materialMode);
+  const backgroundModeRef = useRef(0);
   const cameraDistanceRef = useRef(3);
+  const uploadedSoundUrlsRef = useRef([]);
 
   // Arcball state
   const mouseRef = useRef({ x: 0, y: 0 });
   const prevMouseRef = useRef({ x: 0, y: 0 });
   const isMouseDownRef = useRef(false);
+
+  useEffect(() => {
+    if (!import.meta.hot) return;
+
+    const reloadShaders = async () => {
+      await import.meta.hot.invalidate();
+    };
+
+    import.meta.hot.accept("./shaders/vertex.glsl?raw", reloadShaders);
+    import.meta.hot.accept("./shaders/fragment.glsl?raw", reloadShaders);
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!soundMenuRef.current?.contains(event.target)) {
+        setIsSoundMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      uploadedSoundUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -57,7 +95,7 @@ export default function App() {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
 
     renderer.setSize(width, height);
-    renderer.setClearColor(0x000000);
+    renderer.setClearColor(backgroundMode === 0 ? 0x000000 : 0xffffff, 1);
     containerRef.current.appendChild(renderer.domElement);
 
     camera.position.z = 3;
@@ -72,6 +110,9 @@ export default function App() {
         uNormalIntensity: { value: volume * intensity },
         uMaterialMode: { value: materialMode },
       },
+      transparent: materialMode === 3,
+      depthWrite: materialMode !== 3,
+      side: materialMode === 3 ? THREE.DoubleSide : THREE.FrontSide,
       vertexShader: vertexShaderSource,
       fragmentShader: fragmentShaderSource,
     });
@@ -177,6 +218,12 @@ export default function App() {
       material.uniforms.uStripeDensity.value = stripeSpacingRef.current;
       const normalIntensityValue = volumeRef.current * intensityRef.current;
       material.uniforms.uNormalIntensity.value = normalIntensityValue;
+      material.uniforms.uMaterialMode.value = materialModeRef.current;
+      const isJellyMode = materialModeRef.current === 3;
+      material.transparent = isJellyMode;
+      material.depthWrite = !isJellyMode;
+      material.side = isJellyMode ? THREE.DoubleSide : THREE.FrontSide;
+      renderer.setClearColor(backgroundModeRef.current === 0 ? 0x000000 : 0xffffff, 1);
       const sphereScale = 1.0 + normalIntensityValue * 0.5;
       sphere.scale.setScalar(sphereScale);
 
@@ -214,7 +261,7 @@ export default function App() {
       }
       cameraRef.current = null;
     };
-  }, []);
+  }, [vertexShaderSource, fragmentShaderSource]);
 
   useEffect(() => {
     stripeSpacingRef.current = stripeSpacing;
@@ -240,9 +287,20 @@ export default function App() {
   }, [intensity]);
 
   useEffect(() => {
+    materialModeRef.current = materialMode;
     if (!materialRef.current) return;
     materialRef.current.uniforms.uMaterialMode.value = materialMode;
+    materialRef.current.transparent = materialMode === 3;
+    materialRef.current.depthWrite = materialMode !== 3;
+    materialRef.current.side = materialMode === 3 ? THREE.DoubleSide : THREE.FrontSide;
+    materialRef.current.needsUpdate = true;
   }, [materialMode]);
+
+  useEffect(() => {
+    backgroundModeRef.current = backgroundMode;
+    if (!rendererRef.current) return;
+    rendererRef.current.setClearColor(backgroundMode === 0 ? 0x000000 : 0xffffff, 1);
+  }, [backgroundMode]);
 
   useEffect(() => {
     if (!audioElementRef.current) {
@@ -315,9 +373,39 @@ export default function App() {
     audioTargetRef.current = 0;
   };
 
+  const handleSoundUpload = (event) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    const nextUploadedSounds = files
+      .filter((file) => file.type === "audio/mpeg" || /\.mp3$/i.test(file.name))
+      .map((file) => {
+        const src = URL.createObjectURL(file);
+        uploadedSoundUrlsRef.current.push(src);
+        return {
+          label: file.name.replace(/\.mp3$/i, ""),
+          src,
+        };
+      });
+
+    if (nextUploadedSounds.length > 0) {
+      setUploadedSounds((prev) => [...prev, ...nextUploadedSounds]);
+      setSelectedSound(nextUploadedSounds[0].src);
+      setIsSoundMenuOpen(false);
+      audioLevelRef.current = 0;
+      audioTargetRef.current = 0;
+    }
+
+    event.target.value = "";
+  };
+
+  const allSoundOptions = [...soundOptions, ...uploadedSounds];
+  const selectedSoundLabel =
+    allSoundOptions.find((sound) => sound.src === selectedSound)?.label ?? "Select Sound";
+
   const handleCycleMaterial = () => {
     setMaterialMode((prev) => {
-      const next = (prev + 1) % 2;
+      const next = (prev + 1) % 4;
       if (materialRef.current) {
         materialRef.current.uniforms.uMaterialMode.value = next;
       }
@@ -325,26 +413,90 @@ export default function App() {
     });
   };
 
+  const handleCycleBackground = () => {
+    setBackgroundMode((prev) => (prev + 1) % 2);
+  };
+
   return (
     <div ref={containerRef} className="app-container">
       <div className="control-panel">
+        <div className="control-group control-group-stack">
+          <span>Music</span>
+        </div>
+
+        <button
+          type="button"
+          className="audio-button"
+          onClick={() => soundUploadInputRef.current?.click()}
+        >
+          Upload MP3
+        </button>
+        <input
+          ref={soundUploadInputRef}
+          className="sound-upload-input"
+          type="file"
+          accept=".mp3,audio/mpeg"
+          multiple
+          onChange={handleSoundUpload}
+        />
+
         <label className="control-group">
-          <span>Sound</span>
-          <select value={selectedSound} onChange={handleSoundChange}>
-            {soundOptions.map((sound) => (
-              <option key={sound.src} value={sound.src}>
-                {sound.label}
-              </option>
-            ))}
-          </select>
+          <span>Selected</span>
+          <div ref={soundMenuRef} className="custom-select">
+            <button
+              type="button"
+              className="custom-select-trigger"
+              onClick={() => setIsSoundMenuOpen((prev) => !prev)}
+            >
+              <span>{selectedSoundLabel}</span>
+              <span className={`custom-select-caret${isSoundMenuOpen ? " is-open" : ""}`}>
+                ▾
+              </span>
+            </button>
+            {isSoundMenuOpen ? (
+              <div className="custom-select-menu">
+                {allSoundOptions.map((sound) => (
+                  <button
+                    key={sound.src}
+                    type="button"
+                    className={`custom-select-option${
+                      sound.src === selectedSound ? " is-selected" : ""
+                    }`}
+                    onClick={() => {
+                      handleSoundChange({ target: { value: sound.src } });
+                      setIsSoundMenuOpen(false);
+                    }}
+                  >
+                    {sound.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </label>
 
         <button type="button" className="audio-button" onClick={handleToggleAudio}>
           {isPlaying ? "Pause Audio" : "Play Audio"}
         </button>
 
+        <div className="control-group control-group-stack">
+          <span>Mode</span>
+        </div>
         <button type="button" className="audio-button" onClick={handleCycleMaterial}>
-          {materialMode === 0 ? "Normal" : "Glass"}
+          {materialMode === 0
+            ? "Normal"
+            : materialMode === 1
+              ? "Magma"
+              : materialMode === 2
+                ? "Metallic"
+                : "Jelly"}
+        </button>
+
+        <div className="control-group control-group-stack">
+          <span>Background</span>
+        </div>
+        <button type="button" className="audio-button" onClick={handleCycleBackground}>
+          {backgroundMode === 0 ? "Black" : "White"}
         </button>
 
         <label className="control-group">
@@ -385,6 +537,7 @@ export default function App() {
           />
           <strong>{intensity.toFixed(2)}</strong>
         </label>
+
       </div>
     </div>
   );
