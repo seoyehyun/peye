@@ -28,6 +28,39 @@
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
 }
 
+.control-panel.is-collapsed {
+  resize: none;
+}
+
+.control-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.control-panel.is-collapsed .control-panel-header {
+  margin-bottom: 0;
+}
+
+.control-panel-title {
+  color: #f6fbff;
+  font: 700 11px/1 "Segoe UI", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 .control-group {
   display: grid;
   grid-template-columns: 1fr auto;

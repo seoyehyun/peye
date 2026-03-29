@@ -26,6 +26,7 @@ export default function App() {
   const [selectedSound, setSelectedSound] = useState(soundOptions[0]?.src ?? "");
   const [isSoundMenuOpen, setIsSoundMenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isControlPanelCollapsed, setIsControlPanelCollapsed] = useState(false);
   const containerRef = useRef(null);
   const soundMenuRef = useRef(null);
   const soundUploadInputRef = useRef(null);
@@ -77,6 +78,12 @@ export default function App() {
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (isControlPanelCollapsed) {
+      setIsSoundMenuOpen(false);
+    }
+  }, [isControlPanelCollapsed]);
 
   useEffect(() => {
     return () => {
@@ -419,125 +426,145 @@ export default function App() {
 
   return (
     <div ref={containerRef} className="app-container">
-      <div className="control-panel">
-        <div className="control-group control-group-stack">
-          <span>Music</span>
+      <div className={`control-panel${isControlPanelCollapsed ? " is-collapsed" : ""}`}>
+        <div className="control-panel-header">
+          <span className="control-panel-title">Controls</span>
+          <button
+            type="button"
+            className="control-panel-toggle"
+            onClick={() => setIsControlPanelCollapsed((prev) => !prev)}
+            aria-expanded={!isControlPanelCollapsed}
+            aria-label={isControlPanelCollapsed ? "Expand controls" : "Collapse controls"}
+          >
+            <span
+              className={`custom-select-caret${isControlPanelCollapsed ? "" : " is-open"}`}
+            >
+              ▾
+            </span>
+          </button>
         </div>
 
-        <button
-          type="button"
-          className="audio-button"
-          onClick={() => soundUploadInputRef.current?.click()}
-        >
-          Upload MP3
-        </button>
-        <input
-          ref={soundUploadInputRef}
-          className="sound-upload-input"
-          type="file"
-          accept=".mp3,audio/mpeg"
-          multiple
-          onChange={handleSoundUpload}
-        />
+        {!isControlPanelCollapsed ? (
+          <>
+            <div className="control-group control-group-stack">
+              <span>Music</span>
+            </div>
 
-        <label className="control-group">
-          <span>Selected</span>
-          <div ref={soundMenuRef} className="custom-select">
             <button
               type="button"
-              className="custom-select-trigger"
-              onClick={() => setIsSoundMenuOpen((prev) => !prev)}
+              className="audio-button"
+              onClick={() => soundUploadInputRef.current?.click()}
             >
-              <span>{selectedSoundLabel}</span>
-              <span className={`custom-select-caret${isSoundMenuOpen ? " is-open" : ""}`}>
-                ▾
-              </span>
+              Upload MP3
             </button>
-            {isSoundMenuOpen ? (
-              <div className="custom-select-menu">
-                {allSoundOptions.map((sound) => (
-                  <button
-                    key={sound.src}
-                    type="button"
-                    className={`custom-select-option${
-                      sound.src === selectedSound ? " is-selected" : ""
-                    }`}
-                    onClick={() => {
-                      handleSoundChange({ target: { value: sound.src } });
-                      setIsSoundMenuOpen(false);
-                    }}
-                  >
-                    {sound.label}
-                  </button>
-                ))}
+            <input
+              ref={soundUploadInputRef}
+              className="sound-upload-input"
+              type="file"
+              accept=".mp3,audio/mpeg"
+              multiple
+              onChange={handleSoundUpload}
+            />
+
+            <label className="control-group">
+              <span>Selected</span>
+              <div ref={soundMenuRef} className="custom-select">
+                <button
+                  type="button"
+                  className="custom-select-trigger"
+                  onClick={() => setIsSoundMenuOpen((prev) => !prev)}
+                >
+                  <span>{selectedSoundLabel}</span>
+                  <span className={`custom-select-caret${isSoundMenuOpen ? " is-open" : ""}`}>
+                    ▾
+                  </span>
+                </button>
+                {isSoundMenuOpen ? (
+                  <div className="custom-select-menu">
+                    {allSoundOptions.map((sound) => (
+                      <button
+                        key={sound.src}
+                        type="button"
+                        className={`custom-select-option${
+                          sound.src === selectedSound ? " is-selected" : ""
+                        }`}
+                        onClick={() => {
+                          handleSoundChange({ target: { value: sound.src } });
+                          setIsSoundMenuOpen(false);
+                        }}
+                      >
+                        {sound.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        </label>
+            </label>
 
-        <button type="button" className="audio-button" onClick={handleToggleAudio}>
-          {isPlaying ? "Pause Audio" : "Play Audio"}
-        </button>
+            <button type="button" className="audio-button" onClick={handleToggleAudio}>
+              {isPlaying ? "Pause Audio" : "Play Audio"}
+            </button>
 
-        <div className="control-group control-group-stack">
-          <span>Mode</span>
-        </div>
-        <button type="button" className="audio-button" onClick={handleCycleMaterial}>
-          {materialMode === 0
-            ? "Normal"
-            : materialMode === 1
-              ? "Magma"
-              : materialMode === 2
-                ? "Metallic"
-                : "Jelly"}
-        </button>
+            <div className="control-group control-group-stack">
+              <span>Mode</span>
+            </div>
+            <button type="button" className="audio-button" onClick={handleCycleMaterial}>
+              {materialMode === 0
+                ? "Normal"
+                : materialMode === 1
+                  ? "Magma"
+                  : materialMode === 2
+                    ? "Metallic"
+                    : "Jelly"}
+            </button>
 
-        <div className="control-group control-group-stack">
-          <span>Background</span>
-        </div>
-        <button type="button" className="audio-button" onClick={handleCycleBackground}>
-          {backgroundMode === 0 ? "Black" : "White"}
-        </button>
+            <div className="control-group control-group-stack">
+              <span>Background</span>
+            </div>
+            <button type="button" className="audio-button" onClick={handleCycleBackground}>
+              {backgroundMode === 0 ? "Black" : "White"}
+            </button>
 
-        <label className="control-group">
-          <span>Stripe Spacing</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={stripeSpacing}
-            onChange={(e) => setStripeSpacing(Number(e.target.value))}
-          />
-          <strong>{stripeSpacing.toFixed(2)}</strong>
-        </label>
+            <label className="control-group">
+              <span>Stripe Spacing</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={stripeSpacing}
+                onChange={(e) => setStripeSpacing(Number(e.target.value))}
+              />
+              <strong>{stripeSpacing.toFixed(2)}</strong>
+            </label>
 
-        <label className="control-group">
-          <span>Volume</span>
-          <input
-            type="range"
-            min="0"
-            max="0.5"
-            step="0.01"
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-          />
-          <strong>{(volume * 2).toFixed(2)}</strong>
-        </label>
+            <label className="control-group">
+              <span>Volume</span>
+              <input
+                type="range"
+                min="0"
+                max="0.5"
+                step="0.01"
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+              />
+              <strong>{(volume * 2).toFixed(2)}</strong>
+            </label>
 
-        <label className="control-group">
-          <span>Intensity</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={intensity}
-            onChange={(e) => setIntensity(Number(e.target.value))}
-          />
-          <strong>{intensity.toFixed(2)}</strong>
-        </label>
-
+            <label className="control-group">
+              <span>Intensity</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={intensity}
+                onChange={(e) => setIntensity(Number(e.target.value))}
+              />
+              <strong>{intensity.toFixed(2)}</strong>
+            </label>
+          </>
+        ) : null}
       </div>
     </div>
   );
